@@ -31,8 +31,15 @@ double rnd3(double lim1, double lim2){
     return r;
 }
 
-EM_engine *EME = new EM_engine();
+Uint32 get_col(double q, double qmax){
+    if (q > 0.0)
+        return (64 + (int)(q / qmax * 191.0)) << 16;
+    return (64 + (int)(fabs(q) / qmax * 191.0)) << 8;
+}
+
+EM_engine *EME = new EM_engine(USE_GRAV | USE_RK | USE_QT);
 particle prt0;
+spring spr0;
 
 void put_pixel(SDL_Surface* surface, int x, int y, Uint32 pixel);
 
@@ -73,18 +80,32 @@ int main ( int argc, char** argv )
 */
     // program main loop
 
-    srand(time(0) ^ clock());
+    //srand(time(0) ^ clock());
+    srand(456);
 
-    for(int i = 0; i < 3000; i ++){
-        prt0.q = 0.0;
-        prt0.m = rnd3(5e8, 1e9);
+    const int NP = 10;
+    const int NS = 0;
+
+    for(int i = 0; i < NP; i ++){
+        prt0.q = rnd1(1e-6);
+        prt0.m = rnd3(1e8, 1e9);
         prt0.x = rnd3(2.0, 5.0);
         prt0.y = rnd3(2.0, 5.0);
-        prt0.vx = 0.0;
-        prt0.vy = 0.0;
+        prt0.vx = rnd1(1e-1);//0.0;
+        prt0.vy = rnd1(1e-1);//0.0;
         prt0.ax = 0.0;
         prt0.ay = 0.0;
+        prt0.color = get_col(prt0.q, 1e-6);
+        prt0.is_stat = false;//((rand() % 50) < 2);
         EME -> add_part(&prt0);
+    }
+
+    for(int i = 0; i < NS; i ++){
+        spr0.p1 = rand() % NP;
+        spr0.p2 = rand() % NP;
+        spr0.k = rnd3(1e-1, 1e2);
+        spr0.l0 = rnd3(1e-1, 1e1);
+        EME -> add_spring(&spr0);
     }
 
     bool done = false;
@@ -121,6 +142,9 @@ int main ( int argc, char** argv )
         // draw bitmap
         SDL_BlitSurface(bmp, 0, screen, &dstrect);
 */
+
+        clock_t tm = clock();
+
         SDL_LockSurface(screen);
 
         for(int pi = 0, ps = EME -> particles.size(); pi < ps; pi ++){
@@ -130,12 +154,12 @@ int main ( int argc, char** argv )
                      );
         }
 
-        EME -> calc_new();
+        EME -> calc_next();
 
         for(int pi = 0, ps = EME -> particles.size(); pi < ps; pi ++){
             put_pixel(screen,
                       EME -> particles[pi].x * resize_coef, EME -> particles[pi].y * resize_coef,
-                      ((EME -> particles[pi].q > 0) ? 0x00ff0000 : 0x0000ff00)
+                      (Uint32)EME -> particles[pi].color
                      );
         }
 
@@ -145,6 +169,9 @@ int main ( int argc, char** argv )
 
         // finally, update the screen :)
         SDL_Flip(screen);
+
+        tm = clock() - tm;
+        std::cout << "Cycle #" << (EME -> cycles) << " FPS: " << (CLOCKS_PER_SEC / (double) tm) << std::endl;
     } // end main loop
 
     // free loaded bitmap

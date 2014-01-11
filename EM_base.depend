@@ -1,5 +1,5 @@
 # depslib dependency file v1.0
-1386428024 source:/home/andrey/Projects/EM_base/main.cpp
+1389465877 source:/home/andrey/Projects/EM_base/main.cpp
 	<cstdlib>
 	<stdlib.h>
 	<SDL/SDL.h>
@@ -188,10 +188,11 @@
 	"begin_code.h"
 	"close_code.h"
 
-1386437330 source:/home/andrey/Projects/EM_base/src/EM_engine.cpp
+1389466506 source:/home/andrey/Projects/EM_base/src/EM_engine.cpp
+	<algorithm>
 	"../include/EM_engine.h"
 
-1386359766 /home/andrey/Projects/EM_base/include/EM_engine.h
+1389466258 /home/andrey/Projects/EM_base/include/EM_engine.h
 	<cmath>
 	<iostream>
 	<vector>

@@ -10,13 +10,16 @@
 #define eps 1e0
 #define G 6.67e-11
 #define re 5e-3
-#define dist_m 3e2
+#define dist_m 2e1
 
 #define USE_GRAV 0x01
 #define USE_EL 0x02
+
 #define USE_SPRNG 0x08
 #define USE_RK 0x10
 #define USE_QT 0x20
+
+#define USE_DUMP 0x80
 
 double sqr(double x);
 
@@ -106,7 +109,8 @@ class EM_engine
         void integr_rk();
         void (EM_engine::*integr_method)(void);
         void (EM_engine::*calc_method)(void);
-        bool ugrav, uel, uspr, urk, uqt;
+        void dump();
+        bool ugrav, uel, uspr, urk, uqt, dmp;
 };
 
 #endif // EM_ENGINE_H

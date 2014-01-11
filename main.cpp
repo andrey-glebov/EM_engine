@@ -13,7 +13,7 @@
 
 #include "include/EM_engine.h"
 
-#define resize_coef 100
+#define resize_coef 50
 
 double rnd1(double lim){
     double r = lim * 1.0 * (rand() / (double)RAND_MAX - 0.5);
@@ -37,7 +37,7 @@ Uint32 get_col(double q, double qmax){
     return (64 + (int)(fabs(q) / qmax * 191.0)) << 8;
 }
 
-EM_engine *EME = new EM_engine(USE_GRAV | USE_RK | USE_QT);
+EM_engine *EME = new EM_engine(USE_GRAV | USE_RK | USE_DUMP);
 particle prt0;
 spring spr0;
 
@@ -89,8 +89,8 @@ int main ( int argc, char** argv )
     for(int i = 0; i < NP; i ++){
         prt0.q = rnd1(1e-6);
         prt0.m = rnd3(1e8, 1e9);
-        prt0.x = rnd3(2.0, 5.0);
-        prt0.y = rnd3(2.0, 5.0);
+        prt0.x = rnd3(0.0, 10.0);
+        prt0.y = rnd3(0.0, 10.0);
         prt0.vx = rnd1(1e-1);//0.0;
         prt0.vy = rnd1(1e-1);//0.0;
         prt0.ax = 0.0;

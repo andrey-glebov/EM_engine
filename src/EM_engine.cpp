@@ -59,8 +59,12 @@ void quad_tree::get_res(std::vector <particle> &parts_new){
 }
 
 bool quad_tree::is_in_range(int idx, qt_node *cur_node){
+    /*std::cout << "range: p" << idx << ": x=" << prt[idx].x << " y=" << prt[idx].y << std::endl;
+    std::cout << "range: n:" << cur_node -> x1 << " " << cur_node -> y1 << " " \
+              << cur_node -> x2 << " " << cur_node -> y2 << " " \
+              << cur_node -> xc << " " << cur_node -> yc << std::endl;*/
     return ((prt[idx].x >= cur_node -> x1) && (prt[idx].x <= cur_node -> x2) &&
-            (prt[idx].y >= cur_node -> y1) && (prt[idx].y <= cur_node -> y1));
+            (prt[idx].y >= cur_node -> y1) && (prt[idx].y <= cur_node -> y2));
 }
 
 double quad_tree::dist(int idx, qt_node *cur_node){
@@ -85,7 +89,10 @@ double quad_tree::dist(int idx, qt_node *cur_node){
 }
 
 void quad_tree::add_part(int idx, qt_node *cur_node, int depth){
-    std::cout << idx << " " << (void *) cur_node << " " << depth << std::endl;
+    /*std::cout << idx << " " << (void *) cur_node << " " << depth << std::endl;
+    std::cout << cur_node -> x1 << " " << cur_node -> y1 << " " \
+              << cur_node -> x2 << " " << cur_node -> y2 << " " \
+              << cur_node -> xc << " " << cur_node -> yc << std::endl;*/
     if(cur_node -> part_idx == -1){
         cur_node -> part_idx = idx;
         cur_node -> qs = prt[idx].q;
@@ -94,27 +101,27 @@ void quad_tree::add_part(int idx, qt_node *cur_node, int depth){
         cur_node -> qcy = prt[idx].y;
         cur_node -> mcx = prt[idx].x;
         cur_node -> mcy = prt[idx].y;
-        std::cout << "add case new\n";
+        //std::cout << "add: case new\n";
         return;
     }
     if (cur_node -> is_leaf){
         for(int i = 0; i < 4; i ++){
             cur_node -> nodes[i] = new qt_node;
-            cur_node -> nodes[i] -> x1 = ((i & 0b01) ? (cur_node -> x1) : (cur_node -> xc));
-            cur_node -> nodes[i] -> x2 = ((i & 0b01) ? (cur_node -> xc) : (cur_node -> x2));
-            cur_node -> nodes[i] -> y1 = ((i & 0b10) ? (cur_node -> y1) : (cur_node -> yc));
-            cur_node -> nodes[i] -> y2 = ((i & 0b10) ? (cur_node -> yc) : (cur_node -> y2));
+            cur_node -> nodes[i] -> x1 = ((i & 0b01) ? (cur_node -> xc) : (cur_node -> x1));
+            cur_node -> nodes[i] -> x2 = ((i & 0b01) ? (cur_node -> x2) : (cur_node -> xc));
+            cur_node -> nodes[i] -> y1 = ((i & 0b10) ? (cur_node -> yc) : (cur_node -> y1));
+            cur_node -> nodes[i] -> y2 = ((i & 0b10) ? (cur_node -> y2) : (cur_node -> yc));
             cur_node -> nodes[i] -> xc = (cur_node -> nodes[i] -> x1 + cur_node -> nodes[i] -> x2) / 2.0;
             cur_node -> nodes[i] -> yc = (cur_node -> nodes[i] -> y1 + cur_node -> nodes[i] -> y2) / 2.0;
             cur_node -> nodes[i] -> is_leaf = true;
             cur_node -> nodes[i] -> part_idx = -1;
         }
         cur_node -> is_leaf = false;
-        std::cout << "add created\n";
+        //std::cout << "add: created\n";
     }
     for(int i = 0; i < 4; i ++)
         if(is_in_range(idx, cur_node -> nodes[i])){
-            std::cout << "part " << idx << " put at node " << i << " depth " << depth + 1 << std::endl;
+            //std::cout << "part " << idx << " put at node " << i << " depth " << depth + 1 << std::endl;
             add_part(idx, cur_node -> nodes[i], depth + 1);
             break;
         }
@@ -141,19 +148,19 @@ void quad_tree::add_part(int idx, qt_node *cur_node, int depth){
         cur_node -> qcy += prt[cur_node -> part_idx].y * prt[cur_node -> part_idx].q;
         cur_node -> mcx += prt[cur_node -> part_idx].x * prt[cur_node -> part_idx].m;
         cur_node -> mcy += prt[cur_node -> part_idx].y * prt[cur_node -> part_idx].m;
-        std::cout << "has part d " << depth << "\n";
+        //std::cout << "has part: d " << depth << "\n";
     }
     cur_node -> qcx /= cur_node -> qs;
     cur_node -> qcy /= cur_node -> qs;
     cur_node -> mcx /= cur_node -> ms;
     cur_node -> mcy /= cur_node -> ms;
-    std::cout << "add updated\n";
+    //std::cout << "add: updated\n";
 }
 
 void quad_tree::calc_one(int idx, qt_node *cur_node, int depth){
     double cur_dist = dist(idx, cur_node);
-    std::cout << idx << " " << (void *) cur_node << " " << depth << std::endl;
-    if (cur_dist < 0.0)
+    //std::cout << idx << " " << (void *) cur_node << " " << depth << std::endl;
+    if ((cur_dist < 0.0) || (cur_node -> part_idx == -1))
         return;
     double dx, dy, r, r2, r3, E, F;
     if (((depth > 15) && (cur_dist > 1.0))
@@ -161,6 +168,7 @@ void quad_tree::calc_one(int idx, qt_node *cur_node, int depth){
         dx = cur_node -> qcx - prt[idx].x;
         dy = cur_node -> qcy - prt[idx].y;
         r2 = sqr(dx) + sqr(dy);
+        r2 += sqr(re);
         r = sqrt(r2);
         r3 = r * r2;
         E = ue ? (- k_el * cur_node -> qs * prt[idx].q / r3) : 0.0;
@@ -170,16 +178,17 @@ void quad_tree::calc_one(int idx, qt_node *cur_node, int depth){
         dx = cur_node -> mcx - prt[idx].x;
         dy = cur_node -> mcy - prt[idx].y;
         r2 = sqr(dx) + sqr(dy);
+        r2 += sqr(re);
         r = sqrt(r2);
         r3 = r * r2;
         F = ug ? (G * cur_node -> ms * prt[idx].m / r3) : 0.0;
         cur_ax += F * dx;
         cur_ay += F * dy;
-        std::cout << "case dist\n";
+        //std::cout << "case dist\n";
         return;
     }
     if (cur_node -> part_idx == idx){
-        std::cout << "case idx\n";
+        //std::cout << "case idx\n";
         if (cur_node -> is_leaf)
             return;
         for(int i = 0; i < 4; i ++){
@@ -190,6 +199,7 @@ void quad_tree::calc_one(int idx, qt_node *cur_node, int depth){
     dx = prt[cur_node -> part_idx].x - prt[idx].x;
     dy = prt[cur_node -> part_idx].y - prt[idx].y;
     r2 = sqr(dx) + sqr(dy);
+    r2 += sqr(re);
     r = sqrt(r2);
     r3 = r * r2;
     E = ue ? (- k_el * prt[cur_node -> part_idx].q * prt[idx].q / r3) : 0.0;
@@ -199,16 +209,17 @@ void quad_tree::calc_one(int idx, qt_node *cur_node, int depth){
     dx = prt[cur_node -> part_idx].x - prt[idx].x;
     dy = prt[cur_node -> part_idx].y - prt[idx].y;
     r2 = sqr(dx) + sqr(dy);
+    r2 += sqr(re);
     r = sqrt(r2);
     r3 = r * r2;
     F = ug ? (G * prt[cur_node -> part_idx].m * prt[idx].m / r3) : 0.0;
     cur_ax += F * dx;
     cur_ay += F * dy;
-
-    for(int i = 0; i < 4; i ++){
-        calc_one(idx, cur_node -> nodes[i], depth + 1);
-    }
-    std::cout << "case other\n";
+    if (!(cur_node -> is_leaf))
+        for(int i = 0; i < 4; i ++){
+            calc_one(idx, cur_node -> nodes[i], depth + 1);
+        }
+    //std::cout << "case other\n";
     return;
 }
 
@@ -230,6 +241,7 @@ EM_engine::EM_engine(int mode)
     uspr = (bool)(mode & USE_SPRNG);
     urk = (bool)(mode & USE_RK);
     uqt = (bool)(mode & USE_QT);
+    dmp = (bool)(mode & USE_DUMP);
     void (EM_engine::*integr_method)(void) = &EM_engine::integr_euler;
     if (mode & USE_RK)
         void (EM_engine::*integr_method)(void) = &EM_engine::integr_rk;
@@ -284,8 +296,6 @@ void EM_engine::calc_accel(){
             double dx = particles[pj].x - particles[pi].x;
             double dy = particles[pj].y - particles[pi].y;
             double r2 = sqr(dx) + sqr(dy);
-            if (r2 < 1e-30)
-                continue;
             r2 += sqr(re);
             double r = sqrt(r2);
             double r3 = r * r2;
@@ -312,6 +322,8 @@ void EM_engine::calc_accel_qt(){
 void EM_engine::calc_next(){
     cycles ++;
     urk ? integr_rk() : integr_euler();
+    if (dmp)
+        dump();
     //(this ->*integr_method)();
 }
 
@@ -448,4 +460,11 @@ void EM_engine::integr_rk(){
         particles[pi].vy = particles[pi].cur_vy +
             (particles[pi].k1_vy + 2.0 * particles[pi].k2_vy + 2.0 * particles[pi].k3_vy + particles[pi].k4_vy) / 6.0;
     }
+}
+
+void EM_engine::dump(){
+    std::cout << "cycle #" << cycles << std::endl;
+    for(int pi = 0, ps = particles.size(); pi < ps; pi ++)
+        std::cout << "p" << pi << ": x = " << particles[pi].x << " y = " << particles[pi].y << std::endl;
+    std::cout << std::endl;
 }

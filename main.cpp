@@ -10,6 +10,7 @@
 #endif
 
 #include <ctime>
+#include <sys/time.h>
 
 #include "include/EM_engine.h"
 
@@ -32,16 +33,25 @@ double rnd3(double lim1, double lim2){
 }
 
 Uint32 get_col(double q, double qmax){
+    const int vmin = 96;
     if (q > 0.0)
-        return (64 + (int)(q / qmax * 191.0)) << 16;
-    return (64 + (int)(fabs(q) / qmax * 191.0)) << 8;
+        return ((int)((double)vmin + q / qmax * (double)(255 - vmin))) << 16;
+    return ((int)((double)vmin + fabs(q) / qmax * (double)(255 - vmin))) << 8;
 }
 
-EM_engine *EME = new EM_engine(USE_GRAV | USE_RK | USE_DUMP);
+EM_engine *EME = new EM_engine(USE_GRAV | USE_EL | USE_RK);
 particle prt0;
 spring spr0;
 
 void put_pixel(SDL_Surface* surface, int x, int y, Uint32 pixel);
+void fill_circle(SDL_Surface *surface, int cx, int cy, int radius, Uint32 pixel);
+
+const double qlim = 8e-5;
+const double mmin = 1e8;
+const double mmax = 1e9;
+const double cmin = 0.0;
+const double cmax = 10.0;
+const double vlim = 1.5e-1;
 
 int main ( int argc, char** argv )
 {
@@ -83,19 +93,20 @@ int main ( int argc, char** argv )
     //srand(time(0) ^ clock());
     srand(456);
 
-    const int NP = 10;
+    const int NP = 100;
     const int NS = 0;
 
     for(int i = 0; i < NP; i ++){
-        prt0.q = rnd1(1e-6);
-        prt0.m = rnd3(1e8, 1e9);
-        prt0.x = rnd3(0.0, 10.0);
-        prt0.y = rnd3(0.0, 10.0);
-        prt0.vx = rnd1(1e-1);//0.0;
-        prt0.vy = rnd1(1e-1);//0.0;
+        prt0.q = rnd1(qlim);
+        prt0.m = rnd3(mmin, mmax);
+        prt0.x = rnd3(cmin, cmax);
+        prt0.y = rnd3(cmin, cmax);
+        prt0.vx = rnd1(vlim);
+        prt0.vy = rnd1(vlim);
         prt0.ax = 0.0;
         prt0.ay = 0.0;
-        prt0.color = get_col(prt0.q, 1e-6);
+        prt0.color = get_col(prt0.q, qlim);
+        prt0.rm = (int)sqrt(prt0.m / (mmin / 2.0));
         prt0.is_stat = false;//((rand() % 50) < 2);
         EME -> add_part(&prt0);
     }
@@ -143,24 +154,31 @@ int main ( int argc, char** argv )
         SDL_BlitSurface(bmp, 0, screen, &dstrect);
 */
 
-        clock_t tm = clock();
+        //clock_t tm = clock();
+        timeval tv0, tv1;
+        gettimeofday(&tv0, 0);
 
         SDL_LockSurface(screen);
 
-        for(int pi = 0, ps = EME -> particles.size(); pi < ps; pi ++){
+        /*for(int pi = 0, ps = EME -> particles.size(); pi < ps; pi ++){
             put_pixel(screen,
                       EME -> particles[pi].x * resize_coef, EME -> particles[pi].y * resize_coef,
                       0x00000000
                      );
-        }
+        }*/
 
         EME -> calc_next();
 
         for(int pi = 0, ps = EME -> particles.size(); pi < ps; pi ++){
-            put_pixel(screen,
+            /*put_pixel(screen,
                       EME -> particles[pi].x * resize_coef, EME -> particles[pi].y * resize_coef,
                       (Uint32)EME -> particles[pi].color
-                     );
+                     );*/
+            fill_circle(screen,
+                        EME -> particles[pi].x * resize_coef, EME -> particles[pi].y * resize_coef,
+                        EME -> particles[pi].rm,
+                        (Uint32)EME -> particles[pi].color
+                       );
         }
 
         SDL_UnlockSurface(screen);
@@ -170,8 +188,15 @@ int main ( int argc, char** argv )
         // finally, update the screen :)
         SDL_Flip(screen);
 
-        tm = clock() - tm;
-        std::cout << "Cycle #" << (EME -> cycles) << " FPS: " << (CLOCKS_PER_SEC / (double) tm) << std::endl;
+        //tm = clock() - tm;
+        //std::cout << "Cycle #" << (EME -> cycles) << " FPS: " << (CLOCKS_PER_SEC / (double) tm) << std::endl;
+
+        gettimeofday(&tv1, 0);
+
+        double td = (double)(tv1.tv_sec - tv0.tv_sec) + (tv1.tv_usec - tv0.tv_usec) * 1e-6;
+
+        std::cout << "Cycle #" << (EME -> cycles) << " FPS: " << (1.0 / td) << std::endl;
+
     } // end main loop
 
     // free loaded bitmap
@@ -215,5 +240,49 @@ void put_pixel(SDL_Surface* surface, int x, int y, Uint32 pixel)
     case 4:
         *(Uint32 *)p = pixel;
         break;
+    }
+}
+
+void fill_circle(SDL_Surface *surface, int cx, int cy, int radius, Uint32 pixel)
+{
+    // Note that there is more to altering the bitrate of this
+    // method than just changing this value.  See how pixels are
+    // altered at the following web page for tips:
+    //   http://www.libsdl.org/intro.en/usingvideo.html
+    put_pixel(surface, cx, cy - radius, pixel);
+    put_pixel(surface, cx, cy + radius, pixel);
+    static const int BPP = 4;
+
+    double r = (double)radius;
+
+    for (double dy = 1; dy <= r; dy += 1.0)
+    {
+        // This loop is unrolled a bit, only iterating through half of the
+        // height of the circle.  The result is used to draw a scan line and
+        // its mirror image below it.
+
+        // The following formula has been simplified from our original.  We
+        // are using half of the width of the circle because we are provided
+        // with a center and we need left/right coordinates.
+
+        double dx = floor(sqrt((2.0 * r * dy) - (dy * dy)));
+        int x = cx - dx;
+
+        // Grab a pointer to the left-most pixel for each half of the circle
+        Uint8 *target_pixel_a = (Uint8 *)surface->pixels + ((int)(cy + r - dy)) * surface->pitch + x * BPP;
+        Uint8 *target_pixel_b = (Uint8 *)surface->pixels + ((int)(cy - r + dy)) * surface->pitch + x * BPP;
+
+        Uint8 *sur_min = (Uint8 *)surface->pixels;
+        Uint8 *sur_max = sur_min + (surface -> h - 1) * surface->pitch + (surface -> w - 1) * BPP;
+
+        for (; x <= cx + dx; x++)
+        {
+            if ((target_pixel_a >= sur_min) && (target_pixel_a <= sur_max))
+                *(Uint32 *)target_pixel_a = pixel;
+            if ((target_pixel_b >= sur_min) && (target_pixel_b <= sur_max))
+                *(Uint32 *)target_pixel_b = pixel;
+            target_pixel_a += BPP;
+            target_pixel_b += BPP;
+        }
     }
 }

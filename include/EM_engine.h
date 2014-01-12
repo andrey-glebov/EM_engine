@@ -10,7 +10,7 @@
 #define eps 1e0
 #define G 6.67e-11
 #define re 5e-3
-#define dist_m 2e1
+#define dist_m 1e1
 
 #define USE_GRAV 0x01
 #define USE_EL 0x02
@@ -37,6 +37,7 @@ struct particle{
     double k1_vy, k2_vy, k3_vy, k4_vy;
 
     unsigned int color;
+    double rm;
 
     bool is_stat;
 };

@@ -42,7 +42,6 @@ quad_tree::quad_tree(std::vector <particle> &parts, bool uel, bool ugrav){
 
 quad_tree::~quad_tree(){
     clear(tree);
-    delete tree;
 }
 
 void quad_tree::get_res(std::vector <particle> &parts_new){
@@ -231,6 +230,7 @@ void quad_tree::clear(qt_node *cur_node){
         else
             clear(cur_node -> nodes[i]);
     }
+    delete cur_node;
 }
 
 

@@ -39,7 +39,7 @@ Uint32 get_col(double q, double qmax){
     return ((int)((double)vmin + fabs(q) / qmax * (double)(255 - vmin))) << 8;
 }
 
-EM_engine *EME = new EM_engine(USE_GRAV | USE_EL | USE_RK);
+EM_engine *EME = new EM_engine(USE_GRAV | USE_EL | USE_RK | USE_QT);
 particle prt0;
 spring spr0;
 

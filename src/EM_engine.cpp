@@ -71,9 +71,9 @@ double quad_tree::dist(int idx, qt_node *cur_node){
         return 0.0;
 
     if ((cur_node -> x1 < prt[idx].x) && (prt[idx].x < cur_node -> x2))
-        return std::min(prt[idx].x - cur_node -> x1, cur_node -> x2 - prt[idx].x);
+        return std::min(fabs(prt[idx].y - cur_node -> y1), fabs(cur_node -> y2 - prt[idx].y));
     if ((cur_node -> y1 < prt[idx].y) && (prt[idx].y < cur_node -> y2))
-        return std::min(prt[idx].y - cur_node -> y1, cur_node -> y2 - prt[idx].y);
+        return std::min(fabs(prt[idx].x - cur_node -> x1), fabs(cur_node -> x2 - prt[idx].x));
 
     if ((prt[idx].x < cur_node -> x1) && (prt[idx].y < cur_node -> y1))
         return sqrt(sqr(prt[idx].x - cur_node -> x1) + sqr(prt[idx].y - cur_node -> y1));
